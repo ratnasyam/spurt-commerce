@@ -1,0 +1,93 @@
+---
+- name: Odoo application
+  become: yes
+  hosts: webserver
+  tasks:
+      - name: install apt and repo
+        apt:
+          update_cache: yes
+      - name: cloning git repository
+        ansible.builtin.git:
+          repo: "https://github.com/odoo/odoo.git"
+          clone: yes
+          dest: /tmp/odoo
+          depth: 1
+      - name: installing python3 and pip3
+        apt:
+          name: "{{ item }}"
+          state: present
+        with_items:
+          - python3
+          - python3-pip
+      - name: installing postgressql
+        apt:
+          name: "{{ item }}"
+          state: present
+        with_items:
+          - postgresql
+          - postgresql-client
+          - acl
+      - name: install python packages
+        pip:
+          name: psycopg2-binary
+          state: present
+      - name: creating postgresql user and giving superuser permissions
+        community.postgresql.postgresql_user:
+          login_user: postgres
+          name: $USER
+          role_attr_flags: SUPERUSER
+          state: present
+        become: yes
+        become_user: postgres
+      - name: installing dependencies
+        apt:
+          name: "{{ item }}"
+          state: present
+        with_items:
+          - python3-dev
+          - libxml2-dev
+          - libxslt1-dev
+          - libldap2-dev
+          - libsasl2-dev
+          - libtiff5-dev
+          - libjpeg8-dev
+          - libopenjp2-7-dev
+          - zlib1g-dev
+          - libfreetype6-dev
+          - liblcms2-dev
+          - libwebp-dev
+          - libharfbuzz-dev
+          - libfribidi-dev
+          - libxcb1-dev
+          - libpq-dev
+      - name: Creating communitypath directory in odoo
+        file:
+          path: /tmp/odoo/CommunityPath
+          state: directory
+      - name: Go to the directory and execute command
+        command: chdir=/tmp/odoo/CommunityPath ls
+      - name: Installing pip3 packages
+        pip:
+          name: "{{ item }}"
+          state: present
+        with_items:
+          - setuptools
+          - wheel
+      - name: Go to the directory and execute command
+        command: chdir=/tmp/odoo ls
+      - name: pip3 installing requirements.txt
+        pip:
+          requirements: /tmp/odoo/requirements.txt
+          state: present
+      - name: installing nodejs and npm
+        apt:
+          name: "{{ item }}"
+          state: present
+        with_items:
+          - nodejs
+          - npm
+      - name: installing npm with packages
+        community.general.npm:
+          name: rtlcss
+          global: yes
+          state: present

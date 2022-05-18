@@ -1,70 +1,76 @@
 ---
- - name: To install the Spurt commerce
-   hosts: all
-   become: yes
-   vars:
-   tasks:
-     - name: To get node source using curl command'
-       ansible.builtin.command: curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-     - name: To install the packages
-       apt:
-         name: "{{ item }}"
-         update_cache: yes
-         state: present
-       with_item:
-         - nodejs
-         - build-essential
-     - name: To install the npm packages
-       npm:
-         name: "{{ item }}"
-         state: latest
-         global: yes
-       with_item:
-         - forever
-         - apidoc
-         - angular/cli
-     - name: To install the apache2 ,mysql and imagemagick
-       apt:
-         name: "{{ item }}"
-         state: present
-         update_cache: yes
-       with_item:
-         - apache2
-         - mysql-server
-         - imagemagick
-     - name: enable the enmod and relative dependies
-       apache2_module:
-         state: present
-         name: "{{ item }}"
-       with_item:
-         - a2enmod
-         - proxy
-         - proxy_http
-         - headers
-     - name: To restart the apache2 ( This will be changed to handlers)
-       systemd:
-         name: apache2
-         state: restarted
-     - name: To create the user and set the password for mysql
-       mysql.mysql_user:
-         name: root
-         password: 12345
-         priv: '*.*:ALL'
-         state: present
-     - name : To download the Sprouts.zip
-       builtin.git:
-         repo: 'https://github.com/venkatesh-pogula/Sprouct.git'
-         dest: /tmp/Sprouct
-     - name: To unzip the Sprouts.zip
-       builtin.unarchive:
-         src: /tmp/Sprouct
-         dest: /home/ubuntu
-     - name : To create the database mysql
-       mysql.mysql_db:
-         name: sproutsdb
-         state: present
-     - name: to copy the spurtcommerce.sql into data base
-       mysql.mysql_db:
-         name: sproutsdb
-         state: import
-         target: /home/ubuntu/Spurtcommerce_3.0.1_community_React_LTS/spurtcommerce.sql
+- name: Spurtcommerce application
+  become: yes
+  hosts: all
+  tasks:
+    - name: install apt and repo
+      apt:
+        update_cache: yes
+        state: present
+    - name: installing nodejs setup
+      get_url:
+        url: https://deb.nodesource.com/setup_14.x
+        dest: /tmp/nodejssetup.sh
+    - name: installing nodejs and build essential
+      apt:
+        name: "{{ item }}"
+        update_cache: yes
+        state: present
+      with_items:
+        -  nodejs
+        -  build-essential
+    - name: installing dependency software for  Spurtcommerce
+      community.general.npm:
+        name: "{{ item }}"
+        global: yes
+        state: present
+      with_items:
+        - forever
+        - apidoc
+    - name: apache2 installation
+      apt:
+        name: apache2
+        force_apt_get: yes
+        state: present
+    - name: enabling apache modules
+      community.general.apache2_module:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - proxy
+        - proxy_http
+    - name: restart apache2 module
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+    - name: Installing Imagemagick
+      apt:
+        name: imagemagick
+        state: present
+    - name: installing mysql server and installing python3 mysql dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - mysql-server
+        - python3-pymysql
+    - name: creating password for root user in mysql
+      mysql_user:
+        host: localhost
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: root
+        password: password
+        priv: '*.*:ALL,GRANT'
+        check_implicit_admin: true
+    - name: creating user
+      mysql_user:
+        login_user: root
+        login_password: password
+        name: spurtcommerce
+        password: spurtcommerce
+        host: localhost
+        priv: "*.*:ALL,GRANT"
+        state: present
+
+     
+     
